@@ -1,3 +1,4 @@
+use chrono;
 use reqwest;
 use thiserror::Error;
 
@@ -7,6 +8,10 @@ pub enum Error {
     SqlError(String),
     #[error("JSON error: {0}")]
     JsonError(#[from] serde_json::Error),
+    #[error("Parse Error : {0}")]
+    ParseError(#[from] chrono::ParseError),
+    #[error("Io error: {0}")]
+    IOError(#[from] std::io::Error),
     #[error("Request error: {0}")]
     RequestError(#[from] reqwest::Error),
 }

@@ -15,6 +15,8 @@ dotenv = "0.15"
 chrono = "0.4"
 # mbn = {path = "../../mbn/mbn/"}
 mbn = { git = "https://github.com/anthonyb8/mbn.git", branch = "main" }
+futures-util = "0.3"  
+axum = "0.6"
 
 [dev-dependencies]
 serial_test = "3.1.1"

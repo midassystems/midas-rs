@@ -1,5 +1,5 @@
 use crate::error::Result;
-use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeZone, Utc};
 
 pub fn date_to_unix_nanos(date_str: &str) -> Result<i64> {
     let naive_datetime = if date_str.len() == 10 {
@@ -19,6 +19,15 @@ pub fn date_to_unix_nanos(date_str: &str) -> Result<i64> {
     Ok(unix_nanos)
 }
 
+pub fn unix_nanos_to_date(unix_nanos: i64) -> Result<String> {
+    // Convert the Unix nanoseconds to a DateTime<Utc>
+    let datetime_utc: DateTime<Utc> = Utc.timestamp_nanos(unix_nanos);
+
+    // Format the DateTime<Utc> to a string in the format "YYYY-MM-DD HH:MM:SS"
+    let formatted_date = datetime_utc.format("%Y-%m-%d %H:%M:%S").to_string();
+
+    Ok(formatted_date)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -45,6 +54,18 @@ mod tests {
         // Validate
         assert_eq!(1635724800000000000, unix_nanos);
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_unix_to_date() -> Result<()> {
+        let unix = 1635728461000000000;
+
+        //Test
+        let iso = unix_nanos_to_date(unix)?;
+
+        // Validate
+        assert_eq!("2021-11-01 01:01:01", iso);
         Ok(())
     }
 }

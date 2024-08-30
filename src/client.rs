@@ -1,11 +1,14 @@
 use crate::response::ApiResponse;
-use crate::{error::Result, utils::date_to_unix_nanos};
+use crate::{error::Error, error::Result, utils::date_to_unix_nanos};
+use axum::http::StatusCode;
+use futures_util::StreamExt;
 use mbn::backtest::BacktestData;
 use mbn::symbols::Instrument;
-use reqwest::{self, Client};
+use reqwest::{self, Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
+use std::time::Duration;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RetrieveParams {
@@ -33,9 +36,14 @@ pub struct ApiClient {
 
 impl ApiClient {
     pub fn new(base_url: &str) -> Self {
+        let client = ClientBuilder::new()
+            .timeout(Duration::from_secs(1000)) // Set timeout to 120 seconds
+            .build()
+            .expect("Failed to build HTTP client");
+
         ApiClient {
             base_url: base_url.to_string(),
-            client: Client::new(),
+            client,
         }
     }
 
@@ -156,8 +164,8 @@ impl ApiClient {
     }
 
     pub async fn get_backtest(&self, id: &i32) -> Result<ApiResponse<BacktestData>> {
-        let url = self.url("/trading/backtest/get");
-        let response = self.client.get(&url).json(id).send().await?.text().await?;
+        let url = self.url(&format!("/trading/backtest/get?id={}", id));
+        let response = self.client.get(&url).send().await?.text().await?;
 
         let api_response: ApiResponse<BacktestData> = serde_json::from_str(&response)?;
         Ok(api_response)
@@ -179,18 +187,42 @@ impl ApiClient {
         Ok(api_response)
     }
 
-    pub async fn get_records(&self, params: &RetrieveParams) -> Result<ApiResponse<Vec<u8>>> {
-        let url = self.url("/market_data/mbp/get");
+    pub async fn create_mbp_from_file(&self, file_path: &str) -> Result<ApiResponse<()>> {
+        let url = self.url("/market_data/mbp/bulk_upload");
         let response = self
             .client
-            .get(&url)
-            .json(params)
+            .post(&url)
+            .json(file_path)
             .send()
             .await?
             .text()
             .await?;
 
-        let api_response: ApiResponse<Vec<u8>> = serde_json::from_str(&response)?;
+        let api_response: ApiResponse<()> = serde_json::from_str(&response)?;
+        Ok(api_response)
+    }
+
+    pub async fn get_records(&self, params: &RetrieveParams) -> Result<ApiResponse<Vec<u8>>> {
+        let url = self.url("/market_data/mbp/get");
+        let response = self.client.get(&url).json(params).send().await?;
+
+        // Ensure the response is streamed properly
+        let mut data = Vec::new();
+        let mut stream = response.bytes_stream(); // Correct usage of bytes_stream here
+
+        while let Some(chunk) = stream.next().await {
+            match chunk {
+                Ok(bytes) => data.extend_from_slice(&bytes),
+                Err(e) => {
+                    println!("Error while receiving chunk: {:?}", e);
+                    return Err(Error::from(e));
+                }
+            }
+        }
+
+        // Deserialize the data into the ApiResponse
+        let api_response = ApiResponse::new("success", "", StatusCode::OK, Some(data));
+
         Ok(api_response)
     }
 
@@ -243,6 +275,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    // #[ignore]
     async fn test_instrument_create() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
@@ -270,6 +303,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    // #[ignore]
     async fn test_get_instrument() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
@@ -300,6 +334,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    // #[ignore]
     async fn test_get_instrument_none() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
@@ -317,6 +352,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    // #[ignore]
     async fn test_list_instruments() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
@@ -347,6 +383,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    // #[ignore]
     async fn test_update_instrument() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
@@ -383,6 +420,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    // #[ignore]
     async fn test_create_backtest() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
@@ -410,6 +448,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    // #[ignore]
     async fn test_list_backtest() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
@@ -426,7 +465,6 @@ mod tests {
 
         // Test
         let response = client.list_backtest().await?;
-        println!("{:?}", response);
 
         // Validate
         assert_eq!(response.code, 200);
@@ -440,6 +478,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    // #[ignore]
     async fn test_get_backtest() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
@@ -469,6 +508,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    // #[ignore]
     async fn test_create_mbp() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
@@ -493,6 +533,7 @@ mod tests {
             action: 1,
             side: 2,
             depth: 0,
+            flags: 0,
             ts_recv: 1704209103644092564,
             ts_in_delta: 17493,
             sequence: 739763,
@@ -506,13 +547,14 @@ mod tests {
             }],
         };
         let mbp_2 = Mbp1Msg {
-            hd: { RecordHeader::new::<Mbp1Msg>(id as u32, 1704239109644092564) },
+            hd: { RecordHeader::new::<Mbp1Msg>(id as u32, 1704239109644092565) },
             price: 6870,
             size: 2,
             action: 1,
             side: 1,
             depth: 0,
-            ts_recv: 1704209103644092564,
+            flags: 0,
+            ts_recv: 1704209103644092565,
             ts_in_delta: 17493,
             sequence: 739763,
             levels: [BidAskPair {
@@ -548,6 +590,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    // #[ignore]
     async fn test_get_mbp() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
@@ -572,6 +615,7 @@ mod tests {
             action: 1,
             side: 2,
             depth: 0,
+            flags: 0,
             ts_recv: 1704209103644092564,
             ts_in_delta: 17493,
             sequence: 739763,
@@ -591,6 +635,7 @@ mod tests {
             action: 1,
             side: 1,
             depth: 0,
+            flags: 0,
             ts_recv: 1704209103644092564,
             ts_in_delta: 17493,
             sequence: 739763,
@@ -644,6 +689,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    // #[ignore]
     async fn test_get_records_to_file() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
@@ -651,7 +697,7 @@ mod tests {
 
         // Create instrument
         let instrument = Instrument {
-            ticker: "AAP3".to_string(),
+            ticker: "AAP19".to_string(),
             name: "Apple tester client".to_string(),
             instrument_id: None,
         };
@@ -668,6 +714,7 @@ mod tests {
             action: 1,
             side: 2,
             depth: 0,
+            flags: 0,
             ts_recv: 1704209103644092564,
             ts_in_delta: 17493,
             sequence: 739763,
@@ -687,6 +734,7 @@ mod tests {
             action: 1,
             side: 1,
             depth: 0,
+            flags: 0,
             ts_recv: 1704209103644092564,
             ts_in_delta: 17493,
             sequence: 739763,
@@ -713,7 +761,7 @@ mod tests {
 
         // Test
         let query_params = RetrieveParams {
-            symbols: vec!["AAP3".to_string()],
+            symbols: vec!["AAP19".to_string()],
             start_ts: 1704209103644092563,
             end_ts: 1704239109644092565,
             schema: Schema::Mbp1.to_string(),
@@ -734,6 +782,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    // #[ignore]
     async fn test_get_ohlcv() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
@@ -741,7 +790,7 @@ mod tests {
 
         // Create instrument
         let instrument = Instrument {
-            ticker: "AAP3".to_string(),
+            ticker: "AAP9".to_string(),
             name: "Apple tester client".to_string(),
             instrument_id: None,
         };
@@ -758,6 +807,7 @@ mod tests {
             action: 1,
             side: 2,
             depth: 0,
+            flags: 0,
             ts_recv: 1704209103644092564,
             ts_in_delta: 17493,
             sequence: 739763,
@@ -771,13 +821,14 @@ mod tests {
             }],
         };
         let mbp_2 = Mbp1Msg {
-            hd: { RecordHeader::new::<Mbp1Msg>(id as u32, 1704239109644092564) },
+            hd: { RecordHeader::new::<Mbp1Msg>(id as u32, 1704209103644092565) },
             price: 6870,
             size: 2,
             action: 1,
             side: 1,
             depth: 0,
-            ts_recv: 1704209103644092564,
+            flags: 0,
+            ts_recv: 1704209103644092565,
             ts_in_delta: 17493,
             sequence: 739763,
             levels: [BidAskPair {
@@ -803,7 +854,7 @@ mod tests {
 
         // Test
         let query_params = RetrieveParams {
-            symbols: vec!["AAP3".to_string()],
+            symbols: vec!["AAP9".to_string()],
             start_ts: 1704209103644092563,
             end_ts: 1704239109644092565,
             schema: Schema::Ohlcv1D.to_string(),
@@ -827,4 +878,35 @@ mod tests {
 
         Ok(())
     }
+
+    // #[tokio::test]
+    // #[serial]
+    // #[ignore]
+    // async fn test_get_records_to_file_server() -> Result<()> {
+    //     dotenv().ok();
+    //     let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
+    //     let client = ApiClient::new(&base_url);
+
+    //     // Test
+    //     let query_params = RetrieveParams::new(
+    //         vec!["HE.n.0".to_string(), "ZC.n.0".to_string()],
+    //         "2024-08-20",
+    //         "2024-08-21",
+    //         "ohlcv-1d",
+    //     )?;
+
+    //     let response = client
+    //         .get_records_to_file(&query_params, "tests/mbp1.bin")
+    //         .await?;
+
+    //     println!("{:?}", response);
+
+    //     // Validate
+    //     // assert_eq!(response, ());
+
+    //     // Cleanup
+    //     // let _ = client.delete_symbol(&id).await?;
+
+    //     Ok(())
+    // }
 }

@@ -252,7 +252,7 @@ mod tests {
     use dotenv::dotenv;
     use mbn::decode::CombinedDecoder;
     use mbn::encode::RecordEncoder;
-    use mbn::enums::Schema;
+    use mbn::enums::{Action, Schema};
     use mbn::record_ref::RecordRef;
     use mbn::records::{BidAskPair, Mbp1Msg, RecordHeader};
     use mbn::symbols::Instrument;
@@ -612,7 +612,7 @@ mod tests {
             hd: { RecordHeader::new::<Mbp1Msg>(id as u32, 1704209103644092564) },
             price: 6770,
             size: 1,
-            action: 1,
+            action: Action::Trade as i8,
             side: 2,
             depth: 0,
             flags: 0,
@@ -632,11 +632,11 @@ mod tests {
             hd: { RecordHeader::new::<Mbp1Msg>(id as u32, 1704239109644092564) },
             price: 6870,
             size: 2,
-            action: 1,
+            action: Action::Trade as i8,
             side: 1,
             depth: 0,
             flags: 0,
-            ts_recv: 1704209103644092564,
+            ts_recv: 1704209103644092565,
             ts_in_delta: 17493,
             sequence: 739763,
             levels: [BidAskPair {
@@ -804,7 +804,7 @@ mod tests {
             hd: { RecordHeader::new::<Mbp1Msg>(id as u32, 1704209103644092564) },
             price: 6770,
             size: 1,
-            action: 1,
+            action: Action::Trade as i8,
             side: 2,
             depth: 0,
             flags: 0,
@@ -824,7 +824,7 @@ mod tests {
             hd: { RecordHeader::new::<Mbp1Msg>(id as u32, 1704209103644092565) },
             price: 6870,
             size: 2,
-            action: 1,
+            action: Action::Trade as i8,
             side: 1,
             depth: 0,
             flags: 0,
@@ -879,34 +879,35 @@ mod tests {
         Ok(())
     }
 
-    // #[tokio::test]
-    // #[serial]
-    // #[ignore]
-    // async fn test_get_records_to_file_server() -> Result<()> {
-    //     dotenv().ok();
-    //     let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
-    //     let client = ApiClient::new(&base_url);
+    // Used to test pull files from server
+    #[tokio::test]
+    #[serial]
+    #[ignore]
+    async fn test_get_records_to_file_server() -> Result<()> {
+        dotenv().ok();
+        let base_url = std::env::var("DATABASE_URL").expect("Expected database_url.");
+        let client = ApiClient::new(&base_url);
 
-    //     // Test
-    //     let query_params = RetrieveParams::new(
-    //         vec!["HE.n.0".to_string(), "ZC.n.0".to_string()],
-    //         "2024-08-20",
-    //         "2024-08-21",
-    //         "ohlcv-1d",
-    //     )?;
+        // Test
+        let query_params = RetrieveParams::new(
+            vec!["HE.n.0".to_string(), "ZC.n.0".to_string()],
+            "2024-08-18",
+            "2024-08-22",
+            "ohlcv-1s",
+        )?;
 
-    //     let response = client
-    //         .get_records_to_file(&query_params, "tests/mbp1.bin")
-    //         .await?;
+        let response = client
+            .get_records_to_file(&query_params, "tests/ohlcv1stesting.bin")
+            .await?;
 
-    //     println!("{:?}", response);
+        println!("{:?}", response);
 
-    //     // Validate
-    //     // assert_eq!(response, ());
+        // Validate
+        // assert_eq!(response, ());
 
-    //     // Cleanup
-    //     // let _ = client.delete_symbol(&id).await?;
+        // Cleanup
+        // let _ = client.delete_symbol(&id).await?;
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 }

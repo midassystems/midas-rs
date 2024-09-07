@@ -13,10 +13,10 @@ thiserror ={version = "1.0.63"}
 derive_more = {version = "1.0.0-beta", features = ["from"]}
 dotenv = "0.15"
 chrono = "0.4"
-# mbn = {path = "../../mbn/mbn/"}
-mbn = { git = "https://github.com/anthonyb8/mbn.git", branch = "main" }
 futures-util = "0.3"  
 axum = "0.6"
+mbn = { git = "https://github.com/anthonyb8/mbn.git", branch = "main" }
+# mbn = {path = "../../mbn/mbn/"}
 
 [dev-dependencies]
 serial_test = "3.1.1"

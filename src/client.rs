@@ -37,7 +37,7 @@ pub struct ApiClient {
 impl ApiClient {
     pub fn new(base_url: &str) -> Self {
         let client = ClientBuilder::new()
-            .timeout(Duration::from_secs(1000)) // Set timeout to 120 seconds
+            .timeout(Duration::from_secs(20000)) // Set timeout to 120 seconds
             .build()
             .expect("Failed to build HTTP client");
 
@@ -187,19 +187,33 @@ impl ApiClient {
         Ok(api_response)
     }
 
-    pub async fn create_mbp_from_file(&self, file_path: &str) -> Result<ApiResponse<()>> {
+    pub async fn create_mbp_from_file(&self, file_path: &str) -> Result<()> {
         let url = self.url("/market_data/mbp/bulk_upload");
         let response = self
             .client
             .post(&url)
-            .json(file_path)
+            .json(&file_path) // Ensure you send the file path correctly
             .send()
-            .await?
-            .text()
             .await?;
 
-        let api_response: ApiResponse<()> = serde_json::from_str(&response)?;
-        Ok(api_response)
+        // Stream the server's response
+        let mut stream = response.bytes_stream();
+
+        // Output the streamed response directly to the user
+        while let Some(chunk) = stream.next().await {
+            match chunk {
+                Ok(bytes) => {
+                    // Print the chunk to the console (or to any output method you prefer)
+                    println!("{}", String::from_utf8_lossy(&bytes));
+                }
+                Err(e) => {
+                    println!("Error while receiving chunk: {:?}", e);
+                    return Err(Error::from(e));
+                }
+            }
+        }
+
+        Ok(())
     }
 
     pub async fn get_records(&self, params: &RetrieveParams) -> Result<ApiResponse<Vec<u8>>> {

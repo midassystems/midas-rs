@@ -1,15 +1,31 @@
-use crate::error::Result;
+use crate::error::{Error, Result};
 use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeZone, Utc};
 
 pub fn date_to_unix_nanos(date_str: &str) -> Result<i64> {
     let naive_datetime = if date_str.len() == 10 {
-        // Parse date-only format YYYY-MM-DD
-        let naive_date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d")?;
-        naive_date.and_hms_opt(0, 0, 0).unwrap() // Set time to midnight
+        // Attempt to parse date-only format YYYY-MM-DD
+        match NaiveDate::parse_from_str(date_str, "%Y-%m-%d") {
+            Ok(naive_date) => naive_date.and_hms_opt(0, 0, 0).unwrap(), // Set time to midnight
+            Err(_) => {
+                return Err(Error::InvalidDateFormat(format!(
+                    "Invalid date format '{}'. Expected format: YYYY-MM-DD",
+                    date_str
+                )));
+            }
+        }
     } else {
-        // Parse datetime format YYYY-MM-DD HH:MM:SS
-        NaiveDateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S")?
+        // Attempt to parse datetime format YYYY-MM-DD HH:MM:SS
+        match NaiveDateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S") {
+            Ok(datetime) => datetime,
+            Err(_) => {
+                return Err(Error::InvalidDateFormat(format!(
+                    "Invalid datetime format '{}'. Expected format: YYYY-MM-DD HH:MM:SS",
+                    date_str
+                )));
+            }
+        }
     };
+
     // Convert the NaiveDateTime to a DateTime<Utc>
     let datetime_utc: DateTime<Utc> = DateTime::from_naive_utc_and_offset(naive_datetime, Utc);
 
@@ -28,6 +44,7 @@ pub fn unix_nanos_to_date(unix_nanos: i64) -> Result<String> {
 
     Ok(formatted_date)
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

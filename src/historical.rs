@@ -160,7 +160,6 @@ impl Historical {
         while let Some(chunk) = stream.next().await {
             match chunk {
                 Ok(bytes) => {
-                    // Print the chunk to the console (or to any output method you prefer)
                     println!("{}", String::from_utf8_lossy(&bytes));
                 }
                 Err(e) => {
@@ -212,7 +211,6 @@ impl Historical {
             std::io::Error::new(std::io::ErrorKind::Other, "Error with returned buffer")
         })?)?;
 
-        // let api_response: ApiResponse<Vec<u8>> = serde_json::from_str(&response)?;
         Ok(())
     }
 }
@@ -241,6 +239,77 @@ mod tests {
             }
         }
         None
+    }
+
+    async fn create_dummy_records() -> Result<()> {
+        dotenv().ok();
+        let base_url = std::env::var("HISTORICAL_URL").expect("Expected database_url.");
+        let client = Historical::new(&base_url);
+
+        // Create instrument
+        let instrument = Instrument {
+            ticker: "AAP9".to_string(),
+            name: "Apple tester client".to_string(),
+            instrument_id: None,
+        };
+
+        let create_response = client.create_symbol(&instrument).await?;
+        let id =
+            get_id_from_string(&create_response.message).expect("Error getting id from message.");
+
+        // Pull test data
+        let mbp_1 = Mbp1Msg {
+            hd: { RecordHeader::new::<Mbp1Msg>(id as u32, 1704209103644092564) },
+            price: 6770,
+            size: 1,
+            action: Action::Trade as i8,
+            side: 2,
+            depth: 0,
+            flags: 0,
+            ts_recv: 1704209103644092564,
+            ts_in_delta: 17493,
+            sequence: 739763,
+            levels: [BidAskPair {
+                ask_px: 1,
+                bid_px: 1,
+                bid_sz: 2,
+                ask_sz: 2,
+                bid_ct: 10,
+                ask_ct: 20,
+            }],
+        };
+        let mbp_2 = Mbp1Msg {
+            hd: { RecordHeader::new::<Mbp1Msg>(id as u32, 1704209103644092565) },
+            price: 6870,
+            size: 2,
+            action: Action::Trade as i8,
+            side: 1,
+            depth: 0,
+            flags: 0,
+            ts_recv: 1704209103644092565,
+            ts_in_delta: 17493,
+            sequence: 739763,
+            levels: [BidAskPair {
+                ask_px: 1,
+                bid_px: 1,
+                bid_sz: 2,
+                ask_sz: 2,
+                bid_ct: 10,
+                ask_ct: 20,
+            }],
+        };
+        let record_ref1: RecordRef = (&mbp_1).into();
+        let record_ref2: RecordRef = (&mbp_2).into();
+
+        let mut buffer = Vec::new();
+        let mut encoder = RecordEncoder::new(&mut buffer);
+        encoder
+            .encode_records(&[record_ref1, record_ref2])
+            .expect("Encoding failed");
+
+        // Create records
+        let _ = client.create_mbp(&buffer).await?;
+        Ok(())
     }
 
     #[tokio::test]
@@ -1046,37 +1115,25 @@ mod tests {
         Ok(())
     }
 
-    // Used to test pull files from server
+    /// Used to test pull files from server
     #[tokio::test]
     #[serial]
     #[ignore]
     async fn test_get_records_to_file_server() -> Result<()> {
         dotenv().ok();
+
         let base_url = std::env::var("HISTORICAL_URL").expect("Expected database_url.");
         let client = Historical::new(&base_url);
-        println!("{:?}", base_url);
 
         // Test
         let query_params = RetrieveParams::new(
             vec!["HE.n.0".to_string(), "ZC.n.0".to_string()],
             "2024-01-01 00:00:00",
-            "2024-01-02 23:00:00",
-            "mbp-1",
+            "2024-01-03 23:00:00",
+            "bbo-1m",
         )?;
-        let response = client.get_records(&query_params).await?;
 
-        let data = response.data.unwrap();
-        let cursor = Cursor::new(data);
-        let mut decoder = CombinedDecoder::new(cursor);
-        let _decoded = decoder.decode().expect("Error decoding metadata.");
-
-        println!("{:?}", _decoded);
-
-        // Validate
-        // assert_eq!(response, ());
-
-        // Cleanup
-        // let _ = client.delete_symbol(&id).await?;
+        let _response = client.get_records_to_file(&query_params, "bbo.bin").await?;
 
         Ok(())
     }

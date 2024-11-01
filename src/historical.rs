@@ -219,7 +219,7 @@ impl Historical {
 mod tests {
     use super::*;
     use dotenv::dotenv;
-    use mbn::decode::CombinedDecoder;
+    use mbn::decode::Decoder;
     use mbn::encode::RecordEncoder;
     use mbn::enums::{Action, Schema};
     use mbn::record_ref::RecordRef;
@@ -241,6 +241,7 @@ mod tests {
         None
     }
 
+    #[allow(dead_code)]
     async fn create_dummy_records() -> Result<()> {
         dotenv().ok();
         let base_url = std::env::var("HISTORICAL_URL").expect("Expected database_url.");
@@ -623,7 +624,7 @@ mod tests {
 
         let data = response.data.unwrap();
         let cursor = Cursor::new(data);
-        let mut decoder = CombinedDecoder::new(cursor);
+        let mut decoder = Decoder::new(cursor)?;
         let _decoded = decoder.decode().expect("Error decoding metadata.");
 
         // Validate
@@ -813,8 +814,8 @@ mod tests {
 
         let data = response.data.unwrap();
         let cursor = Cursor::new(data);
-        let mut decoder = CombinedDecoder::new(cursor);
-        let (_metadata, _record) = decoder.decode().expect("Error decoding metadata.");
+        let mut decoder = Decoder::new(cursor)?;
+        let _record = decoder.decode().expect("Error decoding metadata.");
 
         // Validate
         assert_eq!(response.code, 200);
@@ -910,8 +911,8 @@ mod tests {
 
         let data = response.data.unwrap();
         let cursor = Cursor::new(data);
-        let mut decoder = CombinedDecoder::new(cursor);
-        let (_metadata, _record) = decoder.decode().expect("Error decoding metadata.");
+        let mut decoder = Decoder::new(cursor)?;
+        let _record = decoder.decode().expect("Error decoding metadata.");
 
         // Validate
         assert_eq!(response.code, 200);
@@ -1006,8 +1007,8 @@ mod tests {
 
         let data = response.data.unwrap();
         let cursor = Cursor::new(data);
-        let mut decoder = CombinedDecoder::new(cursor);
-        let (_metadata, _record) = decoder.decode().expect("Error decoding metadata.");
+        let mut decoder = Decoder::new(cursor)?;
+        let _record = decoder.decode().expect("Error decoding metadata.");
 
         // Validate
         assert_eq!(response.code, 200);
@@ -1102,8 +1103,8 @@ mod tests {
 
         let data = response.data.unwrap();
         let cursor = Cursor::new(data);
-        let mut decoder = CombinedDecoder::new(cursor);
-        let (_metadata, _record) = decoder.decode().expect("Error decoding metadata.");
+        let mut decoder = Decoder::new(cursor)?;
+        let _record = decoder.decode().expect("Error decoding metadata.");
 
         // Validate
         assert_eq!(response.code, 200);

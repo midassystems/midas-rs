@@ -1,6 +1,6 @@
 use crate::error::Result;
 use crate::response::ApiResponse;
-use mbn::backtest::BacktestData;
+use mbn::{backtest::BacktestData, live::LiveData};
 use reqwest::{self, Client, ClientBuilder};
 use std::time::Duration;
 
@@ -29,6 +29,53 @@ impl Trading {
             "/trading/".to_string(),
             endpoint.to_string()
         )
+    }
+
+    // Live
+    pub async fn create_live(&self, data: &LiveData) -> Result<ApiResponse<i32>> {
+        let url = self.url("live/create");
+        let response = self
+            .client
+            .post(&url)
+            .json(data)
+            .send()
+            .await?
+            .text()
+            .await?;
+
+        let api_response: ApiResponse<i32> = serde_json::from_str(&response)?;
+        Ok(api_response)
+    }
+
+    pub async fn list_live(&self) -> Result<ApiResponse<Vec<(i32, String)>>> {
+        let url = self.url("live/list");
+        let response = self.client.get(&url).send().await?.text().await?;
+
+        let api_response: ApiResponse<Vec<(i32, String)>> = serde_json::from_str(&response)?;
+        Ok(api_response)
+    }
+
+    pub async fn delete_live(&self, id: &i32) -> Result<ApiResponse<()>> {
+        let url = self.url("live/delete");
+        let response = self
+            .client
+            .delete(&url)
+            .json(id)
+            .send()
+            .await?
+            .text()
+            .await?;
+
+        let api_response: ApiResponse<()> = serde_json::from_str(&response)?;
+        Ok(api_response)
+    }
+
+    pub async fn get_live(&self, id: &i32) -> Result<ApiResponse<LiveData>> {
+        let url = self.url(&format!("live/get?id={}", id));
+        let response = self.client.get(&url).send().await?.text().await?;
+
+        let api_response: ApiResponse<LiveData> = serde_json::from_str(&response)?;
+        Ok(api_response)
     }
 
     // Backtest
@@ -183,6 +230,94 @@ mod tests {
 
         // Cleanup
         let _ = client.delete_backtest(&id).await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    // #[ignore]
+    async fn test_create_live() -> Result<()> {
+        dotenv().ok();
+        let base_url = std::env::var("TRADING_URL").expect("Expected database_url.");
+        let client = Trading::new(&base_url);
+
+        // Pull test data
+        let mock_data =
+            fs::read_to_string("tests/data/test_data.live.json").expect("Unable to read file");
+        let live_data: LiveData =
+            serde_json::from_str(&mock_data).expect("JSON was not well-formatted");
+
+        // Test
+        let response = client.create_live(&live_data).await?;
+
+        // Validate
+        assert_eq!(response.code, 200);
+        assert_eq!(response.status, "success");
+
+        // Cleanup
+        let id = get_id_from_string(&response.message).expect("Error getting id from message.");
+        let _ = client.delete_live(&id).await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    // #[ignore]
+    async fn test_list_live() -> Result<()> {
+        dotenv().ok();
+        let base_url = std::env::var("TRADING_URL").expect("Expected database_url.");
+        let client = Trading::new(&base_url);
+
+        // Pull test data
+        let mock_data =
+            fs::read_to_string("tests/data/test_data.live.json").expect("Unable to read file");
+        let live_data: LiveData =
+            serde_json::from_str(&mock_data).expect("JSON was not well-formatted");
+
+        let response = client.create_live(&live_data).await?;
+        let id = get_id_from_string(&response.message).expect("Error getting id from message.");
+
+        // Test
+        let response = client.list_live().await?;
+
+        // Validate
+        assert_eq!(response.code, 200);
+        assert_eq!(response.status, "success");
+
+        // Cleanup
+        let _ = client.delete_live(&id).await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    // #[ignore]
+    async fn test_get_live() -> Result<()> {
+        dotenv().ok();
+        let base_url = std::env::var("TRADING_URL").expect("Expected database_url.");
+        let client = Trading::new(&base_url);
+
+        // Pull test data
+        let mock_data =
+            fs::read_to_string("tests/data/test_data.live.json").expect("Unable to read file");
+        let live_data: LiveData =
+            serde_json::from_str(&mock_data).expect("JSON was not well-formatted");
+
+        let response = client.create_live(&live_data).await?;
+        let id = get_id_from_string(&response.message).expect("Error getting id from message.");
+
+        // Test
+        let response = client.get_live(&id).await?;
+
+        // Validate
+        assert_eq!(response.code, 200);
+        assert_eq!(response.status, "success");
+
+        // Cleanup
+        let _ = client.delete_live(&id).await?;
 
         Ok(())
     }

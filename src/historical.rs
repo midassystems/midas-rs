@@ -28,6 +28,7 @@ impl RetrieveParams {
     }
 }
 
+#[derive(Clone)]
 pub struct Historical {
     base_url: String,
     client: Client,

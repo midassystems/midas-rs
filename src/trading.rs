@@ -4,6 +4,7 @@ use mbn::{backtest::BacktestData, live::LiveData};
 use reqwest::{self, Client, ClientBuilder};
 use std::time::Duration;
 
+#[derive(Clone)]
 pub struct Trading {
     base_url: String,
     client: Client,

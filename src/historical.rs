@@ -110,6 +110,24 @@ impl Historical {
         Ok(api_response)
     }
 
+    pub async fn list_vendor_symbols(
+        &self,
+        vendor: &String,
+    ) -> Result<ApiResponse<Vec<Instrument>>> {
+        let url = self.url("instruments/vendor_list");
+        let response = self
+            .client
+            .get(&url)
+            .json(vendor)
+            .send()
+            .await?
+            .text()
+            .await?;
+        let api_response: ApiResponse<Vec<Instrument>> = serde_json::from_str(&response)?;
+
+        Ok(api_response)
+    }
+
     pub async fn update_symbol(
         &self,
         instrument: &Instrument,
@@ -226,6 +244,7 @@ mod tests {
     use mbn::record_ref::RecordRef;
     use mbn::records::{BidAskPair, Mbp1Msg, RecordHeader};
     use mbn::symbols::Instrument;
+    use mbn::symbols::Vendors;
     use regex::Regex;
     use serial_test::serial;
     use std::io::Cursor;
@@ -249,11 +268,17 @@ mod tests {
         let client = Historical::new(&base_url);
 
         // Create instrument
-        let instrument = Instrument {
-            ticker: "AAP9".to_string(),
-            name: "Apple tester client".to_string(),
-            instrument_id: None,
-        };
+        let instrument = Instrument::new(
+            None,
+            "AAP9",
+            "Apple tester client",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
 
         let create_response = client.create_symbol(&instrument).await?;
         let id =
@@ -322,11 +347,17 @@ mod tests {
         let base_url = std::env::var("HISTORICAL_URL").expect("Expected database_url.");
         let client = Historical::new(&base_url);
 
-        let instrument = Instrument {
-            ticker: "AAP00001".to_string(),
-            name: "Apple tester client".to_string(),
-            instrument_id: None,
-        };
+        let instrument = Instrument::new(
+            None,
+            "AAP00001",
+            "Apple tester client",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
 
         // Test
         let response = client.create_symbol(&instrument).await?;
@@ -350,11 +381,17 @@ mod tests {
         let base_url = std::env::var("HISTORICAL_URL").expect("Expected database_url.");
         let client = Historical::new(&base_url);
 
-        let instrument = Instrument {
-            ticker: "AAPL2098".to_string(),
-            name: "Apple tester client2".to_string(),
-            instrument_id: None,
-        };
+        let instrument = Instrument::new(
+            None,
+            "AAPL2098",
+            "Apple tester client2",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
 
         let response = client.create_symbol(&instrument).await?;
         let id = get_id_from_string(&response.message).expect("Error getting id from message.");
@@ -399,11 +436,55 @@ mod tests {
         let base_url = std::env::var("HISTORICAL_URL").expect("Expected database_url.");
         let client = Historical::new(&base_url);
 
-        let instrument = Instrument {
-            ticker: "AAP0003".to_string(),
-            name: "Apple tester client".to_string(),
-            instrument_id: None,
-        };
+        let instrument = Instrument::new(
+            None,
+            "AAP0003",
+            "Apple tester client",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
+
+        let create_response = client.create_symbol(&instrument).await?;
+
+        // Test
+        let vendor = "databento".to_string();
+        let response = client.list_vendor_symbols(&vendor).await?;
+
+        // Validate
+        assert_eq!(response.code, 200);
+        assert_eq!(response.status, "success");
+
+        // Cleanup
+        let id =
+            get_id_from_string(&create_response.message).expect("Error getting id from message.");
+        let _ = client.delete_symbol(&id).await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    // #[ignore]
+    async fn test_list_vendor_instruments() -> Result<()> {
+        dotenv().ok();
+        let base_url = std::env::var("HISTORICAL_URL").expect("Expected database_url.");
+        let client = Historical::new(&base_url);
+
+        let instrument = Instrument::new(
+            None,
+            "AAP0003",
+            "Apple tester client",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
 
         let create_response = client.create_symbol(&instrument).await?;
 
@@ -430,22 +511,34 @@ mod tests {
         let base_url = std::env::var("HISTORICAL_URL").expect("Expected database_url.");
         let client = Historical::new(&base_url);
 
-        let instrument = Instrument {
-            ticker: "AAP0005".to_string(),
-            name: "Apple tester client".to_string(),
-            instrument_id: None,
-        };
+        let instrument = Instrument::new(
+            None,
+            "AAP0005",
+            "Apple tester client",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
 
         let create_response = client.create_symbol(&instrument).await?;
         let id =
             get_id_from_string(&create_response.message).expect("Error getting id from message.");
 
         // Test
-        let instrument = Instrument {
-            ticker: "TTT0005".to_string(),
-            name: "New name".to_string(),
-            instrument_id: None,
-        };
+        let instrument = Instrument::new(
+            None,
+            "TTT0005",
+            "New name",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            2,
+            true,
+        );
 
         let response = client.update_symbol(&instrument, &id).await?;
 
@@ -468,11 +561,17 @@ mod tests {
         let client = Historical::new(&base_url);
 
         // Create instrument
-        let instrument = Instrument {
-            ticker: "AAP0003".to_string(),
-            name: "Apple tester client".to_string(),
-            instrument_id: None,
-        };
+        let instrument = Instrument::new(
+            None,
+            "AAP0003",
+            "Apple tester client",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
 
         let create_response = client.create_symbol(&instrument).await?;
         let id =
@@ -550,11 +649,17 @@ mod tests {
         let client = Historical::new(&base_url);
 
         // Create instrument
-        let instrument = Instrument {
-            ticker: "AAP3".to_string(),
-            name: "Apple tester client".to_string(),
-            instrument_id: None,
-        };
+        let instrument = Instrument::new(
+            None,
+            "AAP3",
+            "Apple tester client",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
 
         let create_response = client.create_symbol(&instrument).await?;
         let id =
@@ -647,11 +752,17 @@ mod tests {
         let client = Historical::new(&base_url);
 
         // Create instrument
-        let instrument = Instrument {
-            ticker: "AAP19".to_string(),
-            name: "Apple tester client".to_string(),
-            instrument_id: None,
-        };
+        let instrument = Instrument::new(
+            None,
+            "AAP19",
+            "Apple tester client",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
 
         let create_response = client.create_symbol(&instrument).await?;
         let id =
@@ -740,12 +851,17 @@ mod tests {
         let client = Historical::new(&base_url);
 
         // Create instrument
-        let instrument = Instrument {
-            ticker: "AAP9".to_string(),
-            name: "Apple tester client".to_string(),
-            instrument_id: None,
-        };
-
+        let instrument = Instrument::new(
+            None,
+            "AAP9",
+            "Apple tester client",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
         let create_response = client.create_symbol(&instrument).await?;
         let id =
             get_id_from_string(&create_response.message).expect("Error getting id from message.");
@@ -837,11 +953,17 @@ mod tests {
         let client = Historical::new(&base_url);
 
         // Create instrument
-        let instrument = Instrument {
-            ticker: "AAP9".to_string(),
-            name: "Apple tester client".to_string(),
-            instrument_id: None,
-        };
+        let instrument = Instrument::new(
+            None,
+            "AAP9",
+            "Apple tester client",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
 
         let create_response = client.create_symbol(&instrument).await?;
         let id =
@@ -933,12 +1055,17 @@ mod tests {
         let client = Historical::new(&base_url);
 
         // Create instrument
-        let instrument = Instrument {
-            ticker: "AAP9".to_string(),
-            name: "Apple tester client".to_string(),
-            instrument_id: None,
-        };
-
+        let instrument = Instrument::new(
+            None,
+            "AAP9",
+            "Apple tester client",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
         let create_response = client.create_symbol(&instrument).await?;
         let id =
             get_id_from_string(&create_response.message).expect("Error getting id from message.");
@@ -1029,11 +1156,17 @@ mod tests {
         let client = Historical::new(&base_url);
 
         // Create instrument
-        let instrument = Instrument {
-            ticker: "AAP9".to_string(),
-            name: "Apple tester client".to_string(),
-            instrument_id: None,
-        };
+        let instrument = Instrument::new(
+            None,
+            "AAP9",
+            "Apple tester client",
+            Vendors::Databento,
+            Some("continuous".to_string()),
+            Some("GLBX.MDP3".to_string()),
+            1,
+            1,
+            true,
+        );
 
         let create_response = client.create_symbol(&instrument).await?;
         let id =

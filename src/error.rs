@@ -16,6 +16,8 @@ pub enum Error {
     RequestError(#[from] reqwest::Error),
     #[error("Invalid date format: {0}")]
     InvalidDateFormat(String),
+    #[error("Custom error: {0}")]
+    CustomError(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

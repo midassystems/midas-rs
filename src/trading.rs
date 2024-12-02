@@ -1,6 +1,7 @@
 use crate::error::Result;
 use crate::response::ApiResponse;
 use mbn::{backtest::BacktestData, live::LiveData};
+use reqwest::StatusCode;
 use reqwest::{self, Client, ClientBuilder};
 use std::time::Duration;
 
@@ -35,94 +36,112 @@ impl Trading {
     // Live
     pub async fn create_live(&self, data: &LiveData) -> Result<ApiResponse<i32>> {
         let url = self.url("live/create");
-        let response = self
-            .client
-            .post(&url)
-            .json(data)
-            .send()
-            .await?
-            .text()
-            .await?;
+        let response = self.client.post(&url).json(data).send().await?;
 
-        let api_response: ApiResponse<i32> = serde_json::from_str(&response)?;
+        // Check for HTTP status
+        if response.status() != StatusCode::OK {
+            // Deserialize the API response and return it, even if it indicates failure
+            return ApiResponse::<i32>::from_response(response).await;
+        }
+
+        let api_response = ApiResponse::<i32>::from_response(response).await?;
         Ok(api_response)
     }
 
     pub async fn list_live(&self) -> Result<ApiResponse<Vec<(i32, String)>>> {
         let url = self.url("live/list");
-        let response = self.client.get(&url).send().await?.text().await?;
+        let response = self.client.get(&url).send().await?;
 
-        let api_response: ApiResponse<Vec<(i32, String)>> = serde_json::from_str(&response)?;
+        // Check for HTTP status
+        if response.status() != StatusCode::OK {
+            // Deserialize the API response and return it, even if it indicates failure
+            return ApiResponse::<Vec<(i32, String)>>::from_response(response).await;
+        }
+
+        let api_response = ApiResponse::<Vec<(i32, String)>>::from_response(response).await?;
         Ok(api_response)
     }
 
-    pub async fn delete_live(&self, id: &i32) -> Result<ApiResponse<()>> {
+    pub async fn delete_live(&self, id: &i32) -> Result<ApiResponse<String>> {
         let url = self.url("live/delete");
-        let response = self
-            .client
-            .delete(&url)
-            .json(id)
-            .send()
-            .await?
-            .text()
-            .await?;
+        let response = self.client.delete(&url).json(id).send().await?;
 
-        let api_response: ApiResponse<()> = serde_json::from_str(&response)?;
+        if response.status() != StatusCode::OK {
+            // Deserialize the API response and return it, even if it indicates failure
+            return ApiResponse::<String>::from_response(response).await;
+        }
+
+        let api_response = ApiResponse::<String>::from_response(response).await?;
         Ok(api_response)
     }
 
-    pub async fn get_live(&self, id: &i32) -> Result<ApiResponse<LiveData>> {
+    pub async fn get_live(&self, id: &i32) -> Result<ApiResponse<Vec<LiveData>>> {
         let url = self.url(&format!("live/get?id={}", id));
-        let response = self.client.get(&url).send().await?.text().await?;
+        let response = self.client.get(&url).send().await?;
 
-        let api_response: ApiResponse<LiveData> = serde_json::from_str(&response)?;
+        // Check for HTTP status
+        if response.status() != StatusCode::OK {
+            // Deserialize the API response and return it, even if it indicates failure
+            return ApiResponse::<Vec<LiveData>>::from_response(response).await;
+        }
+
+        let api_response = ApiResponse::<Vec<LiveData>>::from_response(response).await?;
         Ok(api_response)
     }
 
     // Backtest
     pub async fn create_backtest(&self, backtest: &BacktestData) -> Result<ApiResponse<i32>> {
         let url = self.url("backtest/create");
-        let response = self
-            .client
-            .post(&url)
-            .json(backtest)
-            .send()
-            .await?
-            .text()
-            .await?;
+        let response = self.client.post(&url).json(backtest).send().await?;
 
-        let api_response: ApiResponse<i32> = serde_json::from_str(&response)?;
+        if response.status() != StatusCode::OK {
+            // Deserialize the API response and return it, even if it indicates failure
+            return ApiResponse::<i32>::from_response(response).await;
+        }
+
+        let api_response = ApiResponse::<i32>::from_response(response).await?;
         Ok(api_response)
     }
 
     pub async fn list_backtest(&self) -> Result<ApiResponse<Vec<(i32, String)>>> {
         let url = self.url("backtest/list");
-        let response = self.client.get(&url).send().await?.text().await?;
+        let response = self.client.get(&url).send().await?;
 
-        let api_response: ApiResponse<Vec<(i32, String)>> = serde_json::from_str(&response)?;
+        // Check for HTTP status
+        if response.status() != StatusCode::OK {
+            // Deserialize the API response and return it, even if it indicates failure
+            return ApiResponse::<Vec<(i32, String)>>::from_response(response).await;
+        }
+
+        let api_response = ApiResponse::<Vec<(i32, String)>>::from_response(response).await?;
         Ok(api_response)
     }
 
-    pub async fn delete_backtest(&self, id: &i32) -> Result<ApiResponse<()>> {
+    pub async fn delete_backtest(&self, id: &i32) -> Result<ApiResponse<String>> {
         let url = self.url("backtest/delete");
-        let response = self
-            .client
-            .delete(&url)
-            .json(id)
-            .send()
-            .await?
-            .text()
-            .await?;
+        let response = self.client.delete(&url).json(id).send().await?;
 
-        let api_response: ApiResponse<()> = serde_json::from_str(&response)?;
+        // Check for HTTP status
+        if response.status() != StatusCode::OK {
+            // Deserialize the API response and return it, even if it indicates failure
+            return ApiResponse::<String>::from_response(response).await;
+        }
+
+        let api_response = ApiResponse::<String>::from_response(response).await?;
         Ok(api_response)
     }
 
-    pub async fn get_backtest(&self, id: &i32) -> Result<ApiResponse<BacktestData>> {
+    pub async fn get_backtest(&self, id: &i32) -> Result<ApiResponse<Vec<BacktestData>>> {
         let url = self.url(&format!("backtest/get?id={}", id));
-        let response = self.client.get(&url).send().await?.text().await?;
+        let response = self.client.get(&url).send().await?;
 
-        let api_response: ApiResponse<BacktestData> = serde_json::from_str(&response)?;
+        // Check for HTTP status
+        if response.status() != StatusCode::OK {
+            // Deserialize the API response and return it, even if it indicates failure
+            return ApiResponse::<Vec<BacktestData>>::from_response(response).await;
+        }
+
+        let api_response = ApiResponse::<Vec<BacktestData>>::from_response(response).await?;
         Ok(api_response)
     }
 }

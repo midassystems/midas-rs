@@ -177,6 +177,7 @@ impl Historical {
                     let bytes_str = String::from_utf8_lossy(&bytes);
                     match serde_json::from_str::<ApiResponse<String>>(&bytes_str) {
                         Ok(response) => {
+                            println!("{:?}", response.message);
                             if response.status != "success" {
                                 return Ok(response);
                             }
@@ -188,7 +189,8 @@ impl Historical {
                     }
                 }
                 Err(e) => {
-                    panic!("Error while reading chunk: {:?}", e);
+                    eprintln!("Error while reading chunk: {:?}", e);
+                    return Err(Error::from(e));
                 }
             }
         }
@@ -223,6 +225,8 @@ impl Historical {
                     let bytes_str = String::from_utf8_lossy(&bytes);
                     match serde_json::from_str::<ApiResponse<String>>(&bytes_str) {
                         Ok(response) => {
+                            println!("{:?}", response.message);
+
                             if response.status != "success" {
                                 return Ok(response);
                             }
@@ -234,7 +238,8 @@ impl Historical {
                     }
                 }
                 Err(e) => {
-                    panic!("Error while reading chunk: {:?}", e);
+                    eprintln!("Error while reading chunk: {:?}", e);
+                    return Err(Error::from(e));
                 }
             }
         }

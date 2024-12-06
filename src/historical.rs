@@ -365,6 +365,7 @@ mod tests {
             ts_recv: 1704209103644092564,
             ts_in_delta: 17493,
             sequence: 739763,
+            discriminator: 0,
             levels: [BidAskPair {
                 ask_px: 1,
                 bid_px: 1,
@@ -385,6 +386,7 @@ mod tests {
             ts_recv: 1704209103644092565,
             ts_in_delta: 17493,
             sequence: 739763,
+            discriminator: 0,
             levels: [BidAskPair {
                 ask_px: 1,
                 bid_px: 1,
@@ -617,6 +619,7 @@ mod tests {
             ts_recv: 1704209103644092564,
             ts_in_delta: 17493,
             sequence: 739763,
+            discriminator: 0,
             levels: [BidAskPair {
                 ask_px: 1,
                 bid_px: 1,
@@ -637,6 +640,7 @@ mod tests {
             ts_recv: 1704209103644092565,
             ts_in_delta: 17493,
             sequence: 739763,
+            discriminator: 0,
             levels: [BidAskPair {
                 ask_px: 1,
                 bid_px: 1,
@@ -689,6 +693,7 @@ mod tests {
             ts_recv: 1704209103644092564,
             ts_in_delta: 17493,
             sequence: 739763,
+            discriminator: 0,
             levels: [BidAskPair {
                 ask_px: 1,
                 bid_px: 1,
@@ -709,6 +714,7 @@ mod tests {
             ts_recv: 1704209103644092564,
             ts_in_delta: 17493,
             sequence: 739763,
+            discriminator: 0,
             levels: [BidAskPair {
                 ask_px: 1,
                 bid_px: 1,

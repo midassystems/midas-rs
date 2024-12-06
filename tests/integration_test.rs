@@ -60,6 +60,7 @@ async fn create_dummy_records_file(filename: &PathBuf) -> anyhow::Result<i32> {
         ts_recv: 1704209103644092564,
         ts_in_delta: 17493,
         sequence: 739763,
+        discriminator: 0,
         levels: [BidAskPair {
             ask_px: 1,
             bid_px: 1,
@@ -80,6 +81,7 @@ async fn create_dummy_records_file(filename: &PathBuf) -> anyhow::Result<i32> {
         ts_recv: 1704209103644092565,
         ts_in_delta: 17493,
         sequence: 739763,
+        discriminator: 0,
         levels: [BidAskPair {
             ask_px: 1,
             bid_px: 1,
@@ -153,6 +155,7 @@ async fn test_create_mbp_from_file_duplicate_error() -> anyhow::Result<()> {
         ts_recv: 1704209103644092564,
         ts_in_delta: 17493,
         sequence: 739763,
+        discriminator: 0,
         levels: [BidAskPair {
             ask_px: 1,
             bid_px: 1,
@@ -174,6 +177,7 @@ async fn test_create_mbp_from_file_duplicate_error() -> anyhow::Result<()> {
         ts_recv: 1704209103644092564,
         ts_in_delta: 17493,
         sequence: 739763,
+        discriminator: 0,
         levels: [BidAskPair {
             ask_px: 1,
             bid_px: 1,

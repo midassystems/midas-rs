@@ -101,7 +101,7 @@ async fn create_dummy_records_file(filename: &PathBuf) -> anyhow::Result<i32> {
         .expect("Encoding failed");
 
     // Create records file
-    let _ = encoder.write_to_file(filename)?;
+    let _ = encoder.write_to_file(filename, false)?;
 
     Ok(id)
 }
@@ -197,7 +197,7 @@ async fn test_create_mbp_from_file_duplicate_error() -> anyhow::Result<()> {
         .expect("Encoding failed");
 
     // Create records file
-    let _ = encoder.write_to_file(&path)?;
+    let _ = encoder.write_to_file(&path, false)?;
 
     // Test
     let result = client.create_mbp_from_file(filename).await?;

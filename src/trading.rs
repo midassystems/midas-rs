@@ -1,5 +1,7 @@
-use crate::error::Result;
 use crate::response::ApiResponse;
+use crate::{error::Error, error::Result};
+use futures_util::StreamExt;
+use mbn::backtest_encode::BacktestEncoder;
 use mbn::{backtest::BacktestData, live::LiveData};
 use reqwest::StatusCode;
 use reqwest::{self, Client, ClientBuilder};
@@ -90,17 +92,67 @@ impl Trading {
     }
 
     // Backtest
-    pub async fn create_backtest(&self, backtest: &BacktestData) -> Result<ApiResponse<i32>> {
-        let url = self.url("backtest/create");
-        let response = self.client.post(&url).json(backtest).send().await?;
+    pub async fn create_backtest(&self, backtest: &BacktestData) -> Result<ApiResponse<String>> {
+        let mut bytes = Vec::new();
+        let mut encoder = BacktestEncoder::new(&mut bytes);
+        encoder.encode_metadata(&backtest.metadata);
+        encoder.encode_timeseries(&backtest.period_timeseries_stats);
+        encoder.encode_timeseries(&backtest.daily_timeseries_stats);
+        encoder.encode_trades(&backtest.trades);
+        encoder.encode_signals(&backtest.signals);
 
+        let url = self.url("backtest/create");
+        let response = self.client.post(&url).json(&bytes).send().await?;
+
+        // Check for HTTP status
         if response.status() != StatusCode::OK {
             // Deserialize the API response and return it, even if it indicates failure
-            return ApiResponse::<i32>::from_response(response).await;
+            return ApiResponse::<String>::from_response(response).await;
         }
 
-        let api_response = ApiResponse::<i32>::from_response(response).await?;
-        Ok(api_response)
+        let mut stream = response.bytes_stream();
+        let mut last_response: Vec<ApiResponse<String>> = Vec::new();
+
+        // Output the streamed response directly to the user
+        while let Some(chunk) = stream.next().await {
+            match chunk {
+                Ok(bytes) => {
+                    let bytes_str = String::from_utf8_lossy(&bytes);
+                    match serde_json::from_str::<ApiResponse<String>>(&bytes_str) {
+                        Ok(response) => {
+                            if response.status != "success" {
+                                return Ok(response);
+                            }
+
+                            if last_response.is_empty() {
+                                last_response.push(response);
+                            } else {
+                                last_response[0] = response;
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Error while receiving chunk: {:?}", e);
+                            return Err(Error::from(e));
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error while reading chunk: {:?}", e);
+                    return Err(Error::from(e));
+                }
+            }
+        }
+
+        if last_response.len() > 0 {
+            Ok(last_response[0].clone())
+        } else {
+            Ok(ApiResponse::new(
+                "failed",
+                "No valid response recieved.",
+                StatusCode::NOT_FOUND,
+                "".to_string(),
+            ))
+        }
     }
 
     pub async fn list_backtest(&self) -> Result<ApiResponse<Vec<(i32, String)>>> {
@@ -188,7 +240,7 @@ mod tests {
         assert_eq!(response.status, "success");
 
         // Cleanup
-        let id = get_id_from_string(&response.message).expect("Error getting id from message.");
+        let id: i32 = response.data.parse().unwrap();
         let _ = client.delete_backtest(&id).await?;
 
         Ok(())
@@ -209,7 +261,7 @@ mod tests {
             serde_json::from_str(&mock_data).expect("JSON was not well-formatted");
 
         let response = client.create_backtest(&backtest_data).await?;
-        let id = get_id_from_string(&response.message).expect("Error getting id from message.");
+        let id: i32 = response.data.parse().unwrap();
 
         // Test
         let response = client.list_backtest().await?;
@@ -239,7 +291,7 @@ mod tests {
             serde_json::from_str(&mock_data).expect("JSON was not well-formatted");
 
         let response = client.create_backtest(&backtest_data).await?;
-        let id = get_id_from_string(&response.message).expect("Error getting id from message.");
+        let id: i32 = response.data.parse().unwrap();
 
         // Test
         let response = client.get_backtest(&id).await?;

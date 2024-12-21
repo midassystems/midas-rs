@@ -34,12 +34,6 @@ impl<T> ApiDefault for Option<T> {
     }
 }
 
-// impl<T> ApiDefault for Option {
-//     fn default_value() -> Self {
-//         None
-//     }
-// }
-
 #[derive(Debug, Deserialize)]
 pub struct RawApiResponse {
     pub status: String,
@@ -53,7 +47,7 @@ impl<T: serde::de::DeserializeOwned + ApiDefault> Into<ApiResponse<T>> for RawAp
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct ApiResponse<T> {
     pub status: String,
     pub message: String,
